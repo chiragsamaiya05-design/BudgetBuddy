@@ -52,18 +52,26 @@ def add_expense(user_id):
 
     if not date:
         return 
+    
+    cursor.execute("SELECT MAX(local_id) FROM expenses WHERE user_id = %s", (user_id,))
+    last_local_id = cursor.fetchone()[0]
+
+    if last_local_id is None:
+        local_id = 1
+    else:
+        local_id = last_local_id + 1
 
 
-    cursor.execute("""INSERT INTO expenses (user_id, amount, category, description, date)
-                      VALUES (%s, %s, %s, %s, %s)""",
-                   (user_id, amount, category, description, date))
+    cursor.execute("""INSERT INTO expenses (user_id, amount, category, description, date,local_id)
+                      VALUES (%s, %s, %s, %s, %s,%s)""",
+                   (user_id, amount, category, description, date,local_id))
     conn.commit()
 
     print("Expense added successfully\n")
 
 
 def view_expenses(user_id):
-     cursor.execute("SELECT id, amount, category, description, date FROM expenses WHERE user_id=%s",
+     cursor.execute("SELECT local_id, amount, category, description, date FROM expenses WHERE user_id=%s   ORDER BY local_id ASC ",
                    (user_id,))
      rows = cursor.fetchall()
 
@@ -75,7 +83,7 @@ def view_by_category(user_id):
     category = input("Enter category to filter: ").upper()
 
     cursor.execute("""
-        SELECT id, amount, category, description, date 
+        SELECT local_id, amount, category, description, date 
         FROM expenses 
         WHERE user_id = %s AND category = %s
     """, (user_id, category))
@@ -93,17 +101,17 @@ def view_by_category(user_id):
 
 
 def delete_expense(user_id):
-    expense_id = input("Enter expense ID to delete: ")
+    local_id = input("Enter expense ID to delete: ")
 
-    cursor.execute("DELETE FROM expenses WHERE id=%s AND user_id=%s",
-                   (expense_id, user_id))
+    cursor.execute("DELETE FROM expenses WHERE user_id=%s AND local_id=%s",
+                   (user_id,local_id))
     conn.commit()
 
     print("Expense deleted!\n")
 
 
 def update_expense(user_id):
-    expense_id = input("Enter expense ID to update: ")
+    local_id = input("Enter expense ID to update: ")
 
     amount = float(input("New amount: "))
     category = input("New category: ").upper()
@@ -117,15 +125,15 @@ def update_expense(user_id):
 
     cursor.execute("""UPDATE expenses
                       SET amount=%s, category=%s, description=%s, date=%s
-                      WHERE id=%s AND user_id=%s""",
-                   (amount, category, description, date, expense_id, user_id))
+                      WHERE  user_id=%s AND local_id=%s""",
+                     (amount, category, description, date,  user_id,local_id))
     conn.commit()
 
     print("Expense updated\n")
 
 def report_csv(user_id):
   
-   cursor.execute("""SELECT id, amount, category, description, date FROM expenses WHERE user_id = %s
+   cursor.execute("""SELECT local_id, amount, category, description, date FROM expenses WHERE user_id = %s
 """,(user_id,))
    
    rows= cursor.fetchall()
@@ -149,7 +157,7 @@ def report_csv(user_id):
 from openpyxl import Workbook
 
 def report_excel(user_id):
-    cursor.execute("SELECT id, amount, category, description, date FROM expenses WHERE user_id = %s",
+    cursor.execute("SELECT local_id, amount, category, description, date FROM expenses WHERE user_id = %s",
                    (user_id,))
     rows = cursor.fetchall()
 
@@ -170,6 +178,27 @@ def report_excel(user_id):
     workbook.save(filename)
 
     print(f"Excel exported successfully → {filename}\n")
+
+def report_monthly(user_id):
+    month = int(input("Enter month (MM) :"))
+    year = int(input("Enter Year (YYYY) : "))
+
+    cursor.execute("""SELECT local_id, amount, category, description,date  FROM expenses WHERE user_id=%s AND MONTH(date)=%s  AND YEAR(date) = %s""",(user_id,month,year))
+
+    rows = cursor.fetchall()
+
+    if not rows:
+        print("\nNo expenses found for this month.\n")
+        return
+
+    print(f"\nExpenses for {month}-{year}:\n")
+    for r in rows:
+        print(f"ID: {r[0]} | Amount: ₹{r[1]} | Category: {r[2]} | Desc: {r[3]} | Date: {r[4]}")
+    print()
+
+
+    return rows
+
 def delete_account(user_id):
     print("\n WARNING: This will permanently delete your account and all expense records!")
     confirm = input("Type YES to confirm: ")
@@ -184,6 +213,65 @@ def delete_account(user_id):
 
     print("Your account and all related data have been deleted permanently.\n")
     return "DELETED"
+def sort_expenses(user_id):
+    while True:
+        print("""
+    Sort Options:
+    1. Amount High → Low
+    2. Amount Low → High
+    3. Date Newest → Oldest
+    4. Date Oldest → Newest
+    5. Main Menu
+    """)
+
+        choice = input("Choose option: ")
+
+        if choice == "1":
+            query = """
+                SELECT local_id, amount, category, description, date 
+                FROM expenses 
+                WHERE user_id=%s 
+                ORDER BY amount DESC
+            """
+        elif choice == "2":
+            query = """
+                SELECT local_id, amount, category, description, date 
+                FROM expenses 
+                WHERE user_id=%s 
+                ORDER BY amount ASC
+            """
+        elif choice == "3":
+            query = """
+                SELECT local_id, amount, category, description, date 
+                FROM expenses 
+                WHERE user_id=%s 
+                ORDER BY date DESC
+            """
+        elif choice == "4":
+            query = """
+                SELECT local_id, amount, category, description, date 
+                FROM expenses 
+                WHERE user_id=%s 
+                ORDER BY date ASC
+            """
+        elif choice =="5":
+            print("Back to Main Menu\n")
+            return
+        else:
+            print("Invalid choice.\n")
+            
+
+        cursor.execute(query, (user_id,))
+        rows = cursor.fetchall()
+
+        if not rows:
+            print("No expenses found.\n")
+            return
+
+        print("\nSorted Expenses:\n")
+        for r in rows:
+            print(f"ID: {r[0]} | Amount: ₹{r[1]} | Category: {r[2]} | Desc: {r[3]} | Date: {r[4]}")
+        print()
 
 
 def menu(user_id):
@@ -194,8 +282,9 @@ def menu(user_id):
 3. Update Expense
 4. Delete Expense
 5. Get Report
-6. Logout
-7. Delete Account
+6. Sort Expenses
+7. Logout
+8. Delete Account
 """)
         choice = input("Enter your choice: ")
 
@@ -227,7 +316,8 @@ def menu(user_id):
                print("""
 1.CSV
 2.Excel
-3.Main Menu
+3.Monthly Report
+4.Main Menu
 """)
                choice_report = input("Enter your choice: ")
 
@@ -235,18 +325,21 @@ def menu(user_id):
                    report_csv(user_id)
                elif choice_report=="2":
                    report_excel(user_id)
-               elif choice_report =="3":
+               elif choice_report == "3":
+                    report_monthly(user_id)
+               elif choice_report =="4":
                    print("Back to Main Menu\n")
                    break
                else:
                      print("invalid option\n")           
 
             
-
         elif choice == "6":
+            sort_expenses(user_id)
+        elif choice == "7":
          print("log out\n")
          break
-        elif choice=="7":
+        elif choice=="8":
             delete_account(user_id)
             break
         else:
