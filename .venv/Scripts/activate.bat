@@ -8,7 +8,11 @@ if defined _OLD_CODEPAGE (
     "%SystemRoot%\System32\chcp.com" 65001 > nul
 )
 
+<<<<<<< HEAD
 set VIRTUAL_ENV=C:\Users\chira\Projects\Streamlit\.venv
+=======
+set VIRTUAL_ENV=C:\Users\chira\Projects\Expense_Tracker\.venv
+>>>>>>> fcf79750055f8a6d66a70dbf8d719df92bdb8907
 
 if not defined PROMPT set PROMPT=$P$G
 

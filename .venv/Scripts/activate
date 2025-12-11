@@ -35,7 +35,11 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
+<<<<<<< HEAD
 VIRTUAL_ENV="C:\Users\chira\Projects\Streamlit\.venv"
+=======
+VIRTUAL_ENV="C:\Users\chira\Projects\Expense_Tracker\.venv"
+>>>>>>> fcf79750055f8a6d66a70dbf8d719df92bdb8907
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
