@@ -3,6 +3,10 @@ from datetime import datetime
 import csv
 import os
 from openpyxl import Workbook
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 
 
 conn =mysql.connector.connect(
@@ -99,6 +103,28 @@ def view_by_category(user_id):
         print(f"ID: {r[0]} | Amount: ₹{r[1]} | Desc: {r[3]} | Date: {r[4]}")
     print()
 
+
+
+def view_expense_by_description(user_id):
+    keyword = input("Enter text to search in description: ").upper()
+
+    cursor.execute("""
+        SELECT local_id, amount, category, description, date
+        FROM expenses
+        WHERE user_id = %s AND description LIKE %s
+        ORDER BY date ASC
+    """, (user_id, "%" + keyword + "%"))
+
+    rows = cursor.fetchall()
+
+    if not rows:
+        print(f"No expenses found containing: {keyword}\n")
+        return
+
+    print(f"\nExpenses containing '{keyword}':\n")
+    for r in rows:
+        print(f"ID: {r[0]} | Amount: ₹{r[1]} | Category: {r[2]} | Desc: {r[3]} | Date: {r[4]}")
+    print()
 
 def delete_expense(user_id):
     local_id = input("Enter expense ID to delete: ")
@@ -274,6 +300,43 @@ def sort_expenses(user_id):
         print()
 
 
+def plot_category_spending(user_id):
+    cursor.execute("""
+        SELECT category, SUM(amount) 
+        FROM expenses 
+        WHERE user_id = %s 
+        GROUP BY category
+    """, (user_id,))
+    
+    rows = cursor.fetchall()
+
+    if not rows:
+        print("No expenses found for visualization.\n")
+        return
+
+    df = pd.DataFrame(rows, columns=["Category", "Total"])
+    
+    print("""
+1.Pie chart
+2.Bar Garph
+""")
+    choice = input("Enter your choice of visualization")
+    if choice == "1":
+        plt.figure(figsize=(6, 6))
+        plt.pie(df["Total"], labels=df["Category"], autopct="%1.1f%%")
+        plt.title("Category-wise Spending (Pie Chart)")
+        plt.show()
+    elif choice == "2":
+        plt.figure(figsize=(8, 6))
+        sns.barplot(x="Category", y="Total", data=df)
+        plt.title("Category-wise Spending (Bar Chart)")
+        plt.xlabel("Category")
+        plt.ylabel("Total Amount")
+        plt.show()
+    else:
+        print("wrong Choice")
+        return
+
 def menu(user_id):
     while True:
         print("""
@@ -283,8 +346,9 @@ def menu(user_id):
 4. Delete Expense
 5. Get Report
 6. Sort Expenses
-7. Logout
-8. Delete Account
+7. Expenses Graph
+8. Logout
+9. Delete Account
 """)
         choice = input("Enter your choice: ")
 
@@ -295,7 +359,8 @@ def menu(user_id):
                 print("""
 1. view Expenses
 2. View Expenses by Category
-3. Main Menu                    
+3. View Expenses by Description
+4. Main Menu                    
 """ )
                 choice_view = input("Enter choice for view")
                 if choice_view=="1":
@@ -303,8 +368,11 @@ def menu(user_id):
                 elif choice_view=="2":
                     view_by_category(user_id)
                 elif choice_view =="3":
+                    view_expense_by_description(user_id)
+                elif choice_view == "4":
                     print("Back to Main Menu")
                     break
+                    
                 else:
                     print("Invalid Option/Choice\n")
         elif choice == "3":
@@ -336,10 +404,12 @@ def menu(user_id):
             
         elif choice == "6":
             sort_expenses(user_id)
-        elif choice == "7":
+        elif choice=="7":
+            plot_category_spending(user_id)
+        elif choice == "8":
          print("log out\n")
          break
-        elif choice=="8":
+        elif choice=="9":
             delete_account(user_id)
             break
         else:
