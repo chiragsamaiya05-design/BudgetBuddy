@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 BudgetBuddy – CLI Expense Tracker (Python + MySQL)
 
 BudgetBuddy is a command-line based personal expense tracker built using Python and MySQL.
@@ -142,4 +142,4 @@ This project is perfect for beginners learning:
 ##  Project Structure
 
 **
->>>>>>> 7610e5e (Resolved merge conflict)
+
